@@ -1,0 +1,4 @@
+alias(
+    name = "nuget",
+    actual = "//devtools/bazel/nuget/src/Afas.BazelDotnet"
+)

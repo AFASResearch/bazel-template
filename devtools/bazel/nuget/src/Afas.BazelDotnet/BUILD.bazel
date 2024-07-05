@@ -1,0 +1,39 @@
+load("@io_bazel_rules_dotnet//dotnet:defs.bzl", "core_binary")
+resources = []
+
+
+filegroup(
+  name = "Afas.BazelDotnet__data",
+  srcs = [],
+  visibility = ["//visibility:public"]
+)
+
+core_binary(
+  name = "Afas.BazelDotnet",
+  out = "Afas.BazelDotnet.dll",
+  srcs = glob(["**/*.cs"], exclude = ["**/obj/**", "**/bin/**"]),
+  resources = resources,
+  data = [":Afas.BazelDotnet__data"],
+  deps = [
+    #Adding built-in .Net libs
+    "@rules_dotnet_nuget_packages//microsoft.netcore.app.ref",
+
+    "@rules_dotnet_nuget_packages//mcmaster.extensions.commandlineutils",
+    "@rules_dotnet_nuget_packages//nuget.commands",
+    "@rules_dotnet_nuget_packages//nuget.common",
+    "@rules_dotnet_nuget_packages//nuget.configuration",
+    "@rules_dotnet_nuget_packages//nuget.dependencyresolver.core",
+    "@rules_dotnet_nuget_packages//nuget.frameworks",
+    "@rules_dotnet_nuget_packages//nuget.packagemanagement",
+    "@rules_dotnet_nuget_packages//nuget.packaging.core",
+    "@rules_dotnet_nuget_packages//nuget.packaging",
+    "@rules_dotnet_nuget_packages//nuget.projectmodel",
+    "@rules_dotnet_nuget_packages//nuget.protocol",
+    "@rules_dotnet_nuget_packages//nuget.resolver",
+    "@rules_dotnet_nuget_packages//nuget.versioning",
+    "@rules_dotnet_nuget_packages//nuget.credentials",
+    "@rules_dotnet_nuget_packages//nuget.librarymodel",
+  ],
+  dotnet_context_data = "//:afas_context_data",
+  visibility = ["//visibility:public"]
+)

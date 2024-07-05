@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <!-- 
+    The nuget-lock.bzl file needs to be updated after changing this file. This can be done by running the command
+    (replace double- with two minus hyphens (-), XML won't let us put this here directly)
+    ```powershell
+      bazel run devtools/bazel/nuget double- repository $pwd/nuget.config $pwd/Directory.Packages.props $pwd/nuget-lock.bzl
+    ```
+  -->
+  <ItemGroup>
+    <!-- These are dependencies of rules_dotnet. Currently we must scaffold them in @nuget. Should be removed in the future -->
+    <PackageVersion Include="dnlib" Version="3.6.0" />
+    <PackageVersion Include="Google.Protobuf" Version="3.26.1" />
+  </ItemGroup>
+</Project>

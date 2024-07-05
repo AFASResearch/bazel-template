@@ -1,0 +1,80 @@
+# bazelrc docs:      https://docs.bazel.build/versions/master/guide.html#bazelrc
+# command line args: https://docs.bazel.build/versions/master/command-line-reference.html
+# our bazel docs:    %workspace%\generator\docs\development\bazel.md
+
+# We configure a default output_base
+# output_base is preferably configure to something in C:/Anta because this is an excluded path for the virus scanner
+# if the user wishes some other folder they can copy the following line and change it in %USERPROFILE%\.bazelrc
+startup --output_user_root C:/Anta/.bzl
+startup --host_jvm_args=-DBAZEL_TRACK_SOURCE_DIRECTORIES=1
+
+common --noenable_bzlmod
+
+# We could use a local disk "remote" cache, or let users configure this
+# build --disk_cache C:/Anta/.bcache
+# We could set up some remote caching
+# https://docs.bazel.build/versions/master/remote-caching.html
+
+# https://bazel.build/designs/2016/06/21/environment.html
+build --incompatible_strict_action_env
+
+# Compile to dbg by default. This is more convenient with IDE integration
+build -c dbg
+
+# For some reason running test on a /... will build everything in that subpath
+# we are only interested in running tests. Dependencies will of course be build.
+test --build_tests_only
+
+build --nolegacy_external_runfiles
+
+# Unfortunately we can not make this default because build options are inherited
+# This causes crashes on unknown parameters for example for 'clean'
+# Run something like
+#   bazel test --config unit
+# to execute the tests
+
+# With multiplexed worker this is kind of irrelevant
+# We store a big number to the amount of concurrent jobs is not limited by 4 (which is the default)
+build --experimental_worker_max_multiplex_instances 64
+
+# defaults to package - source is experimental
+build:frontend:submodule --@workspace_config//:frontend="submodule"
+build:frontend:dev --@workspace_config//:frontend="dev"
+build:frontend:package --@workspace_config//:frontend="package"
+
+# We are not interested in coverage reports
+# Somehow the default of //tools/test: here depends on local_config_cc which fails on our CI servers
+run --coverage_report_generator=@bazel_tools//tools/coverage:coverage_report_generator
+test --coverage_report_generator=@bazel_tools//tools/coverage:coverage_report_generator
+build --coverage_report_generator=@bazel_tools//tools/coverage:coverage_report_generator
+
+# The generator configs can be run like:
+#   bazel build --config generator
+# Or run the following to build everything
+#   bazel build //...
+
+# remote_cache pre-configs
+build --remote_local_fallback
+build --remote_timeout=30
+build --remote_retries=0
+
+# currently node_module resolution breaks in some places with different settings
+build --remote_download_all
+
+# overwrite moderate tests (most cases) from 300 to 600 seconds timeout
+# this should be a temporary fix for the BtwAangifte BIntegration test.
+# It contains a seed which is rather slow and runs for all 7 test cases.
+test --test_timeout=60,600,900,3600
+
+build --watchfs --experimental_windows_watchfs
+build --noexperimental_check_external_repository_files --noexperimental_check_output_files
+
+run --test_sharding_strategy=disabled
+
+build:remote --remote_cache=grpc://PFBLDCACHE01.ad.afas.nl:8980 --noremote_upload_local_results --remote_local_fallback
+# build:remote --remote_download_minimal
+
+# We try to import an user bazelrc (it's in the .gitignore, so you can edit it)
+# In that file you can put your own configs
+# The things you include take precedence over the things in this file
+try-import %workspace%/.bazelrc_user

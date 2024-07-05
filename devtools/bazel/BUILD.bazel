@@ -1,0 +1,1 @@
+exports_files(["template_generate_test_proxies.ps1", "template_generate_xsd.ps1", "publish.ps1"])

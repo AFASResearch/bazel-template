@@ -1,0 +1,27 @@
+load("@io_bazel_rules_dotnet//dotnet:defs.bzl", "core_context_data")
+load("@workspace_config//:workspace.bzl", "ANTA_ROOT")
+
+core_context_data(
+    name = "afas_context_data",
+    execroot_pathmap = ANTA_ROOT,
+    no_warns = [
+      "NU5100",
+      "1591",
+      "1607",
+      "1701",
+      "1702",
+      "1705",
+      "NU5118",
+      "NU5100",
+      "NU5105",
+      "CS0618", # Members that are marked with the Obsolete attribute are allowed.
+
+      "CA2007", # ConfigureAwait(false)
+
+      "RS1036", # A project containing analyzers or source generators should specify the property '<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>'
+      "RS2008", # Enable analyzer release tracking for the analyzer project containing rule 'TYPEDGEN001'
+    ],
+    warn_as_error = False,
+    analyzer_config = "//:.editorconfig",
+    visibility = ["//visibility:public"]
+)

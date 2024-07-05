@@ -1,0 +1,58 @@
+load("@io_bazel_rules_dotnet//dotnet/private:toolchain.bzl", "core_toolchain")
+exports_files(["dotnet.exe", "sdk/current/AppHostTemplate/apphost.exe"])
+package(default_visibility = ["//visibility:public"])
+
+core_toolchain(
+    name = "{name}_impl",
+    dotnet_runner = "dotnet.exe",
+    csc_binary = "sdk/current/Roslyn/bincore/csc.dll",
+)
+
+# When adding multiple toolchains it'll be better to move this to a rules_dotnet BUILD file
+# Then this sdk zip will only have to be downloaded when constraints are met
+toolchain(
+    name = "{name}",
+    toolchain_type = "@io_bazel_rules_dotnet//dotnet:toolchain_core",
+    # exec_compatible_with = host_constraints,
+    toolchain = ":{name}_impl",
+)
+
+filegroup(
+    name = "mcs_bin",
+    srcs = glob([
+        "sdk/current/Roslyn/bincore/*",
+    ]),
+)
+
+filegroup(
+    name = "mono_bin",
+    srcs = glob([
+        "*",
+    ]),
+)
+
+filegroup(
+    name = "lib",
+    srcs = glob([
+        "sdk/current/lib/**/*",
+    ]),
+)
+
+filegroup(
+    name = "shared",
+    srcs = glob([
+        "shared/**/*",
+    ]),
+)
+
+filegroup(
+    name = "host",
+    srcs = glob([
+        "host/**/*",
+    ]),
+)
+
+filegroup(
+    name = "native_deps",
+    srcs = glob(["host/**/*"]) + glob(["shared/**/*"]),
+)
