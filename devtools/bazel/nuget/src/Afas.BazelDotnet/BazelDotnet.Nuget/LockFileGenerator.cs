@@ -35,7 +35,7 @@ namespace Afas.BazelDotnet.Nuget
         file.Seek(Encoding.UTF8.GetBytes("packages = ").Length, SeekOrigin.Begin);
         using var reader = new StreamReader(file, leaveOpen: true);
         var token = await JToken.ReadFromAsync(new JsonTextReader(reader));
-        existing = token.ToDictionary(e => (string)e["id"], StringComparer.OrdinalIgnoreCase);
+        existing = token.DistinctBy(e => (string)e["id"]).ToDictionary(e => (string)e["id"], StringComparer.OrdinalIgnoreCase);
       }
 
       file.Seek(0, SeekOrigin.Begin);

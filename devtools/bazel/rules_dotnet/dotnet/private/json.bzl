@@ -24,9 +24,11 @@ def _quote(s):
     return "\"" + s + "\""
 
 def _repr(v):
-  if v == "true" or "false":
-    return v
-  return repr(v)
+  if v == "true":
+    return True
+  if v == "false":
+    return False
+  return v
 
 def write_runtimeconfig(ctx, dll_file, manifestloader = True, runtime_properties = {}):
     if type(dll_file) == "File":
@@ -40,26 +42,20 @@ def write_runtimeconfig(ctx, dll_file, manifestloader = True, runtime_properties
 
     loose_framework_version = "{}.0.0".format(framework_version.split(".")[0])
 
-    properties = ["\"{}\": {}".format(k, _repr(v)) for k, v in runtime_properties.items()]
+    properties = { k: _repr(v) for k, v in runtime_properties.items() }
     if manifestloader:
-      properties.append("\"STARTUP_HOOKS\": \"ManifestLoader\"")
+      properties["STARTUP_HOOKS"] = "ManifestLoader"
 
-    json = r"""
-{
-  "runtimeOptions": {
-    "tfm": """+ repr(tfm) +r""",
-    "framework": {
-      "name": "Microsoft.AspNetCore.App",
-      "version": """+ repr(loose_framework_version) +r"""
-    },
-    "configProperties": {
-      """+ ",\n      ".join(properties) +r"""
-    }
-  }
-} 
-"""
-
-    ctx.actions.write(runtimeconfig, json)
+    ctx.actions.write(runtimeconfig, json.encode_indent({
+      "runtimeOptions": {
+        "tfm": tfm,
+        "frameworks": [{
+          "name": d[DotnetLibrary].name[:-4],
+          "version": loose_framework_version
+        } for d in ctx.attr.deps if d[DotnetLibrary].name.endswith(".Ref")],
+        "configProperties": properties
+      },
+    }, indent = '  '))
     return runtimeconfig
 
 def write_depsjson(dotnet_ctx, library):

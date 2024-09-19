@@ -111,7 +111,7 @@ core_publish = rule(
     _core_publish_impl,
     attrs = {
         "libraries": attr.label_list(providers = [DotnetLibrary]),
-        "hostmodel": attr.label(default = "@nuget//microsoft.net.hostmodel", allow_single_file = True),
+        "hostmodel": attr.label(default = "@rules_dotnet_nuget_packages//microsoft.net.hostmodel", allow_single_file = True),
         "apphost": attr.label(default = "@core_sdk//:sdk/current/AppHostTemplate/apphost.exe", allow_single_file = True),
         "publish": attr.label(default = "//devtools/bazel:publish.ps1", allow_single_file = True),
     },

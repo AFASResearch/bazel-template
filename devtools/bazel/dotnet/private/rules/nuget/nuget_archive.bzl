@@ -108,7 +108,9 @@ def _process_lib_file(groups, file, is_build = False):
         tfm = "netstandard2.1"
 
     if tfm not in FRAMEWORK_COMPATIBILITY:
-        return
+        # for net8.0-windows10.0.17763 ish TFMS
+        if tfm.split('-')[0] not in FRAMEWORK_COMPATIBILITY:
+            return
 
     # libgit2sharp.nativebinaries\2.0.320\build\net46\LibGit2Sharp.NativeBinaries.props
     if file.endswith(".props"):
@@ -344,13 +346,18 @@ def _get_package_urls(rctx, sources, auth, package_id, package_version):
 
     return package_urls
 
+def _get_auth_dict(urls):
+    return {} # use_netrc(workspace_netrc, urls, workspace_netrc_patterns)
+
 def _nuget_archive_impl(ctx):
     # First get the auth dict for the package sources since the sources can be different than the
     # package base url when using NuGet V3 feeds.
-    urls = _get_package_urls(ctx, ctx.attr.sources, {}, ctx.attr.id, ctx.attr.version)
+    auth = _get_auth_dict(ctx.attr.sources)
+    urls = _get_package_urls(ctx, ctx.attr.sources, auth, ctx.attr.id, ctx.attr.version)
 
     # Then get the auth dict for the package base urls
-    ctx.download(urls, integrity = ctx.attr.sha512, output = "package.zip")
+    auth = _get_auth_dict(urls)
+    ctx.download(urls, integrity = ctx.attr.sha512, auth = auth, output = "package.zip")
 
     ctx.execute(["C:\\Program Files\\7-Zip\\7z.exe", "x", "package.zip"])
 
@@ -374,6 +381,11 @@ def _nuget_archive_impl(ctx):
         file = _sanitize_path(file)
         i = file.find("/")
         key = file[:i]
+
+        # in net8 MSFT introduced some OffByDefaultAnalyzer magic
+        # see sdk\src\Tasks\Microsoft.NET.Build.Tasks\targets\Microsoft.NET.Sdk.FrameworkReferenceResolution.targets
+        if file[(file.rfind("/") + 1):] in ["Microsoft.AspNetCore.Http.RequestDelegateGenerator.dll", "Microsoft.Extensions.Configuration.Binder.SourceGeneration.dll"]:
+            continue
 
         _process_key_and_file(ctx.name, groups, key, file)
 
@@ -408,7 +420,7 @@ def _nuget_archive_impl(ctx):
         for l in ctx.read(manifest).splitlines():
             s = l.split('|')
             if s[0].endswith(".dll") and s[2]:
-                overrides_obj[s[0][0:-len(".dll")]] = s[2]
+                overrides_obj[s[0][0:-len(".dll")]] = s[2] # + "." + s[3] # include fileversion
 
     overrides = repr(overrides_obj)
 
@@ -469,16 +481,23 @@ def tfm_filegroup(name, tfms):
             srcs = value,
             visibility = ["//visibility:public"],
         )
-        parts = tfm.split("_")
-        if len(parts) == 2:
-            if tfm_rids.get(parts[0]):
-                tfm_rids[parts[0]].append(parts[1])
+
+        sdk_split = tfm.split('-')
+        if len(sdk_split) > 1:
+            if not sdk_split[1].startswith('windows'):
+                # fail("unexpected sdk %s" % tfm)
+                tfm_rids[sdk_split[0] + '-unknown'] = ["default"]
             else:
-                tfm_rids[parts[0]] = [parts[1]]
-        elif tfm_rids.get(tfm):
-            tfm_rids[tfm].append("default")
+                # we strip the version from net8.0-windows10.0.17763 since this is handled by the lockfile
+                tfm_rids[sdk_split[0] + '-windows'] = ["default"]
         else:
-            tfm_rids[tfm] = ["default"]
+            # net8.0 or net8.0_win
+            parts = tfm.split("_")
+            rid = parts[1] if len(parts) == 2 else "default"
+            if tfm_rids.get(parts[0]):
+                tfm_rids[parts[0]].append(rid)
+            else:
+                tfm_rids[parts[0]] = [rid]
 
     # If the TFM only exists without being bound to an RID we can
     # point the alias to the filegroup for the TFM. If the TFM is
@@ -523,7 +542,8 @@ def tfm_filegroup(name, tfms):
         elif tfm in NET_FRAMEWORKS and (tfm not in net):
             net.append((original_tfm, target))
         else:
-            fail("unknown framework %s" % tfm)
+            if not tfm.endswith('-unknown'):
+                fail("unknown framework %s" % tfm)
 
     # there can be a conflict between std and (cor/net) packages where both have a
     # candidate but none encapsulates the other. If this can be the case we
@@ -582,9 +602,7 @@ def rid_filegroup(name, files_per_rid):
 
 def _overrides_impl(ctx):
     return [TargettingPackOverrides(
-        # TODO use assembly version in frameworklist
-        # overrides = { k.lower(): [int(i) for i in v.split(".")] for (k, v) in ctx.attr.overrides.items() },
-        overrides = { k.lower(): [7, 0, 0] for (k, v) in ctx.attr.overrides.items() },
+        overrides = { k.lower(): [int(i) for i in v.split(".")] for (k, v) in ctx.attr.overrides.items() },
     )]
 
 overrides = rule(

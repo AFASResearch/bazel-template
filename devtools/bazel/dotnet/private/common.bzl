@@ -66,9 +66,13 @@ FRAMEWORK_COMPATIBILITY = {
     "netcoreapp3.0": ["netcoreapp2.2", "netstandard2.1"],
     "netcoreapp3.1": ["netcoreapp3.0"],
     "net5.0": ["netcoreapp3.1"],
+    "net5.0-windows": ["net5.0"],
     "net6.0": ["net5.0"],
+    "net6.0-windows": ["net6.0"],
     "net7.0": ["net6.0"],
+    "net7.0-windows": ["net7.0"],
     "net8.0": ["net7.0"],
+    "net8.0-windows": ["net8.0"],
 }
 
 _subsystem_version = {

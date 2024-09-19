@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Reflection;
 
 namespace simpleresgen
@@ -7,18 +8,14 @@ namespace simpleresgen
     {
         static void Main(string[] args)
         {
-            if (args.Length != 2)
-            {
-                Console.WriteLine($"Usage: {Assembly.GetExecutingAssembly().FullName} <infile.resx> <outfile.resources>");
-                Environment.Exit(-1);
-            }
+          args = args.SelectMany(a => a.StartsWith("@") ? System.IO.File.ReadLines(a.Substring(1)) : new[] { a }).ToArray();
 
-            var infile = args[0];
-            var outfile = args[1];
+            var infiles = args[0..^1];
+            var outfile = args[args.Length - 1];
             try
             {
                 var translator = new Translator();
-                translator.Translate(infile, outfile);
+                translator.Translate(infiles, outfile);
             }
             catch (Exception ex)
             {

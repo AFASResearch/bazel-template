@@ -6,7 +6,6 @@ using System.Runtime.Serialization;
 
 namespace Microsoft.Build.Tasks.ResourceHandling
 {
-    [Serializable]
     internal class InputFormatNotSupportedException : Exception
     {
         public InputFormatNotSupportedException()
@@ -18,10 +17,6 @@ namespace Microsoft.Build.Tasks.ResourceHandling
         }
 
         public InputFormatNotSupportedException(string message, Exception innerException) : base(message, innerException)
-        {
-        }
-
-        protected InputFormatNotSupportedException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
     }

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <!-- 
+    The nuget-lock.bzl file needs to be updated after changing this file. This can be done by running the command
+    (replace double- with two minus hyphens (-), XML won't let us put this here directly)
+    ```powershell
+      bazel run devtools/bazel/nuget double- repository $pwd/nuget.config $pwd/Directory.Packages.props $pwd/nuget-lock.bzl
+    ```
+  -->
+  <ItemGroup>
+    <!-- These are dependencies of rules_dotnet. Currently we must scaffold them in @nuget. Should be removed in the future -->
+    
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
+    
+    <PackageVersion Include="dnlib" Version="3.6.0" />
+    <PackageVersion Include="Google.Protobuf" Version="3.26.1" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.4.0" />
+
+    <PackageVersion Include="McMaster.Extensions.CommandLineUtils" Version="2.5.0" />
+    <PackageVersion Include="Microsoft.NET.HostModel" Version="3.1.6" />
+
+    <PackageVersion Include="System.Resources.Writer" Version="4.3.0" />
+    <PackageVersion Include="System.Resources.Extensions" Version="4.3.0" />
+    
+    <PackageVersion Include="NuGet.Commands" Version="5.10.0" />
+    <PackageVersion Include="NuGet.Common" Version="5.10.0" />
+    <PackageVersion Include="NuGet.Configuration" Version="5.10.0" />
+    <PackageVersion Include="NuGet.DependencyResolver.Core" Version="5.10.0" />
+    <PackageVersion Include="NuGet.Frameworks" Version="5.10.0" />
+    <PackageVersion Include="NuGet.PackageManagement" Version="5.10.0" />
+    <PackageVersion Include="NuGet.Packaging.Core" Version="5.10.0" />
+    <PackageVersion Include="NuGet.Packaging" Version="5.10.0" />
+    <PackageVersion Include="NuGet.ProjectModel" Version="5.10.0" />
+    <PackageVersion Include="NuGet.Protocol" Version="5.10.0" />
+    <PackageVersion Include="NuGet.Resolver" Version="5.10.0" />
+    <PackageVersion Include="NuGet.Versioning" Version="5.10.0" />
+  </ItemGroup>
+</Project>

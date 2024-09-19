@@ -6,7 +6,6 @@ using System.Runtime.Serialization;
 
 namespace Microsoft.Build.Tasks.ResourceHandling
 {
-    [Serializable]
     internal class MSBuildResXException : Exception
     {
         public MSBuildResXException()
@@ -18,10 +17,6 @@ namespace Microsoft.Build.Tasks.ResourceHandling
         }
 
         public MSBuildResXException(string message, Exception innerException) : base(message, innerException)
-        {
-        }
-
-        protected MSBuildResXException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
     }

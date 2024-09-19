@@ -17,7 +17,7 @@ load(
     "launcher_header"
 )
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("@rules_dotnet//dotnet/private/transitions:tfm_transition.bzl", "tfm_transition")
+load("@rules_dotnet//dotnet/private/transitions:tfm_transition.bzl", "tfm_transition", "netstandard_transition")
 
 # DotnetContext, DotnetLibrary
 def create_launcher(dotnet, library, shim = None):
@@ -29,7 +29,7 @@ def create_launcher(dotnet, library, shim = None):
             "DOTNET_RUNNER": dotnet.runner,
         }) + r"""
 set DOTNET_ROOT=%DOTNET_RUNNER%\..
-%~dp0{launch_target} %*
+"%~dp0{launch_target}" %*
 """.format(
     launch_target = launch_target.basename))
 
@@ -57,11 +57,17 @@ set DOTNET_ROOT=%DOTNET_RUNNER%\..
 # copies apphost.exe and embeds target dll path to dllname.exe
 def create_shim_exe(ctx, dll):
     exe = ctx.actions.declare_file(paths.replace_extension(dll.basename, ".exe"), sibling = dll)
+    args = ctx.actions.args()
+    args.add(ctx.file._shim_script)
+    args.add_joined(ctx.files._shim_deps, join_with = ',')
+    args.add(ctx.file._apphost)
+    args.add(exe, format = "\"%s\"")
+    args.add(dll, format = "\"%s\"")
 
     ctx.actions.run(
-        executable = ctx.file.dotnet_binary,
-        arguments = [ctx.file.bazel_dotnet.path, "shim", ctx.file.apphost.path, dll.path],
-        inputs = [ctx.file.bazel_dotnet, ctx.file.apphost, dll],
+        executable = 'powershell',
+        arguments = [args],
+        inputs = [ctx.file._shim_script, ctx.file._apphost, dll] + ctx.files._shim_deps,
         outputs = [exe],
     )
 
@@ -76,7 +82,13 @@ def _rule(target_type,
         """_rule_impl emits actions for compiling executable assembly."""
         dotnet = dotnet_context(ctx)
         name = ctx.label.name
-        args = ["/nullable"] if ctx.attr.nullable else []
+        
+        args = [] + ctx.attr.compilation_args
+
+        if ctx.attr.imports:
+            args.append("/imports:%s" % (",".join(ctx.attr.imports)))
+        if ctx.attr.nullable:
+            args.append("/nullable")
 
         # TODO https://github.com/philippgille/docs-1/blob/master/docs/csharp/language-reference/compiler-options/listed-alphabetically.md
         # args.append('/platform:x64')
@@ -92,7 +104,7 @@ def _rule(target_type,
 
             # https://learn.microsoft.com/en-us/dotnet/visual-basic/reference/command-line-compiler/imports
             args.append('/imports:Microsoft.VisualBasic,System,System.Collections,System.Collections.Generic,System.Diagnostics,System.Linq,System.Xml.Linq,System.Threading.Tasks')
-            args.append('/rootnamespace:Afas')
+            args.append('/rootnamespace:%s' % (ctx.attr.root_namespace))
             args.append('/optioncompare:Binary') # Specifies how string comparisons are made.
             args.append('/optionexplicit+') # Causes the compiler to report errors if variables are not declared before they are used.
             args.append('/optionstrict:custom') # Enforces strict type semantics to restrict implicit type conversions.
@@ -104,10 +116,10 @@ def _rule(target_type,
         assembly = dotnet.assembly(
             dotnet,
             name = name,
-            target_type = ctx.attr._target_type,
+            target_type = ctx.attr.target_type,
             srcs = ctx.attr.srcs,
             additional_files = ctx.attr.additional_files,
-            deps = ctx.attr.deps,
+            deps = ctx.split_attr.deps,
             resources = ctx.attr.resources,
             out = ctx.attr.out,
             defines = ctx.attr.defines,
@@ -119,7 +131,7 @@ def _rule(target_type,
         )
 
         result = [assembly] + assembly.output_groups
-        if ctx.attr._target_type == "exe":
+        if ctx.attr.target_type != "library":
             shim = create_shim_exe(ctx, assembly.result)
             result.append(create_launcher(dotnet, assembly, shim))
         else:
@@ -138,10 +150,17 @@ def _rule(target_type,
                 default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
             ),
             "resources": attr.label_list(providers = [DotnetResourceList]),
-            "srcs": attr.label_list(allow_files = [".cs", ".vb"]),
+            "compilation_args": attr.string_list(default = []),
+            "srcs": attr.label_list(allow_files = [".vb" if vb else ".cs"]),
+            "xamls": attr.label_list(allow_files = [".xaml"]),
+            "xaml_resources": attr.label_list(allow_files = True),
             "additional_files": attr.label_list(default = [], allow_files = True),
             "runtime_properties": attr.string_dict(allow_empty=True, default={}, mandatory=False),
             "out": attr.string(),
+            # root namespace is only used for VB
+            "root_namespace": attr.string(default = "Afas"),
+            # imports are only used for VB
+            "imports": attr.string_list(),
             "defines": attr.string_list(),
             "unsafe": attr.bool(default = False),
             "nullable": attr.bool(default = False),
@@ -153,17 +172,23 @@ def _rule(target_type,
                 executable = True,
                 cfg = "exec",
             ),
+            "markup": attr.label(
+                default = None if server_default == None else Label("@io_bazel_rules_dotnet//tools/markup"),
+                executable = True,
+                cfg = "exec",
+            ),
             "loader": attr.label(
                 default = loader_default,
                 executable = False,
                 cfg = "target"
             ),
-            "_target_type": attr.string(default = target_type),
-
+            "target_type": attr.string(default = target_type),
+            "simpleresgen": attr.label(default = None if server_default == None else Label("@io_bazel_rules_dotnet//tools/simpleresgen:simpleresgen")),
+            
             # Shim dependencies
-            "bazel_dotnet": attr.label(default = "@bazel_dotnet//:Afas.BazelDotnet.dll", allow_single_file = True),
-            "dotnet_binary": attr.label(default = "@core_sdk//:dotnet.exe", allow_single_file = True),
-            "apphost": attr.label(default = "@core_sdk//:sdk/current/AppHostTemplate/apphost.exe", allow_single_file = True),
+            "_apphost": attr.label(default = "@core_sdk//:sdk/current/AppHostTemplate/apphost.exe", allow_single_file = True),
+            "_shim_script": attr.label(default = "@io_bazel_rules_dotnet//dotnet/private:shim.ps1", allow_single_file = True),
+            "_shim_deps": attr.label_list(providers = [DotnetLibrary], default = ["@rules_dotnet_nuget_packages//system.memory", "@rules_dotnet_nuget_packages//microsoft.net.hostmodel"], cfg = netstandard_transition),
         },
         toolchains = ["@io_bazel_rules_dotnet//dotnet:toolchain_core"],
         executable = target_type == "exe",
